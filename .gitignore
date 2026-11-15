@@ -1,0 +1,17 @@
+# Build
+build/
+cmake-build-*/
+*.exe
+*.obj
+*.o
+
+# IDE
+.idea/
+.vs/
+.vscode/
+
+# Files created by the game
+partie.txt
+joueurs.txt
+scores.txt
+historique.txt

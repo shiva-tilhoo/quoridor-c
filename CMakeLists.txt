@@ -10,10 +10,10 @@ endif()
 
 add_executable(quoridor
         src/main.c
-        src/jeu.c
-        src/affichage.c
+        src/game.c
+        src/display.c
         src/interaction.c
-        src/utile.c)
+        src/utils.c)
 
 target_include_directories(quoridor PRIVATE include)
 

@@ -1,263 +1,262 @@
 #include "interaction.h"
-#include "affichage.h"
-#include "utile.h"
+#include "display.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <conio.h> // Necessaire pour _getch()
+#include <conio.h> // Needed for _getch()
 
-void deplacer_pion(t_jeu *jeu) {
-    char touche;
-    t_joueur *joueur_actuel = &jeu->joueurs[jeu->joueur_actuel];
+void move_pawn(t_game *game) {
+    char key;
+    t_player *current = &game->players[game->current_player];
 
-    printf("Tour de %s (%c).\n", joueur_actuel->nom, joueur_actuel->pion);
-    printf("Utilisez Z (haut), S (bas), Q (gauche), D (droite) pour deplacer. Appuyez sur Echap pour quitter.\n");
+    printf("%s's turn (%c).\n", current->name, current->token);
+    printf("Move with Z/W (up), S (down), Q/A (left), D (right). Press Esc to quit.\n");
 
     while (1) {
-        touche = _getch();
-        t_position nouvelle_position = joueur_actuel->position;
-        int deplacement_valide = 1;
+        key = toupper(_getch());
+        t_position new_position = current->position;
+        int valid_move = 1;
 
-        if (toupper(touche) == 'S') {
-            // Descendre
-            if (nouvelle_position.y + 2 < TAILLE && jeu->plateau[nouvelle_position.y + 1][nouvelle_position.x] !=
-                'B') {
-                nouvelle_position.y += 2;
+        if (key == 'S') {
+            // Down
+            if (new_position.y + 2 < BOARD_SIZE && game->board[new_position.y + 1][new_position.x] != WALL) {
+                new_position.y += 2;
             } else {
-                printf("Erreur : Deplacement impossible (barriere presente).\n");
-                deplacement_valide = 0;
+                printf("Error: move not possible (wall in the way).\n");
+                valid_move = 0;
             }
-        } else if (toupper(touche) == 'Z') {
-            // Monter
-            if (nouvelle_position.y - 2 >= 0 && jeu->plateau[nouvelle_position.y - 1][nouvelle_position.x] != 'B') {
-                nouvelle_position.y -= 2;
+        } else if (key == 'Z' || key == 'W') {
+            // Up
+            if (new_position.y - 2 >= 0 && game->board[new_position.y - 1][new_position.x] != WALL) {
+                new_position.y -= 2;
             } else {
-                printf("Erreur : Deplacement impossible (barriere presente).\n");
-                deplacement_valide = 0;
+                printf("Error: move not possible (wall in the way).\n");
+                valid_move = 0;
             }
-        } else if (toupper(touche) == 'D') {
-            // Droite
-            if (nouvelle_position.x + 2 < TAILLE && jeu->plateau[nouvelle_position.y][nouvelle_position.x + 1] !=
-                'B') {
-                nouvelle_position.x += 2;
+        } else if (key == 'D') {
+            // Right
+            if (new_position.x + 2 < BOARD_SIZE && game->board[new_position.y][new_position.x + 1] != WALL) {
+                new_position.x += 2;
             } else {
-                printf("Erreur : Deplacement impossible (barriere presente).\n");
-                deplacement_valide = 0;
+                printf("Error: move not possible (wall in the way).\n");
+                valid_move = 0;
             }
-        } else if (toupper(touche) == 'Q') {
-            // Gauche
-            if (nouvelle_position.x - 2 >= 0 && jeu->plateau[nouvelle_position.y][nouvelle_position.x - 1] != 'B') {
-                nouvelle_position.x -= 2;
+        } else if (key == 'Q' || key == 'A') {
+            // Left
+            if (new_position.x - 2 >= 0 && game->board[new_position.y][new_position.x - 1] != WALL) {
+                new_position.x -= 2;
             } else {
-                printf("Erreur : Deplacement impossible (barriere presente).\n");
-                deplacement_valide = 0;
+                printf("Error: move not possible (wall in the way).\n");
+                valid_move = 0;
             }
-        } else if (touche == 27) {
-            printf("Fin du jeu.\n");
+        } else if (key == 27) {
+            printf("Game over.\n");
             exit(0);
         } else {
-            printf("Touche invalide.\n");
+            printf("Invalid key.\n");
             continue;
         }
 
-        if (deplacement_valide &&
-            nouvelle_position.x >= 0 && nouvelle_position.x < TAILLE &&
-            nouvelle_position.y >= 0 && nouvelle_position.y < TAILLE &&
-            jeu->plateau[nouvelle_position.y][nouvelle_position.x] == '.') {
-            joueur_actuel->position = nouvelle_position;
-            joueur_actuel->deplacements++;
+        if (valid_move &&
+            new_position.x >= 0 && new_position.x < BOARD_SIZE &&
+            new_position.y >= 0 && new_position.y < BOARD_SIZE &&
+            game->board[new_position.y][new_position.x] == SQUARE) {
+            current->position = new_position;
+            current->moves++;
 
-            // En cas de victoire on ne passe pas la main : action() termine la partie
-            if (!verifier_victoire(jeu)) {
-                jeu->joueur_actuel = (jeu->joueur_actuel + 1) % jeu->nb_joueurs; // Change de joueur
+            // On a win the turn does not pass: game_loop() ends the game
+            if (!check_victory(game)) {
+                game->current_player = (game->current_player + 1) % game->player_count; // Next player
             }
             break;
         } else {
-            printf("Deplacement invalide. Reessayez.\n");
+            printf("Invalid move. Try again.\n");
         }
     }
 }
 
-bool placement_barriere(char plateau[TAILLE][TAILLE], t_barriere *bar, t_jeu *jeu) {
-    // Demande des coordonnees et de la direction
-    printf("Ou souhaitez-vous placer la barriere ? (Exemple: D1 D2 G): ");
-    if (scanf(" %c%d %c%d %c", &bar->bar_col_1, &bar->bar_lig_1, &bar->bar_col_2, &bar->bar_lig_2,
-              &bar->direction) != 5) {
-        nettoyer_tampon();
-        printf("Erreur : Saisie invalide.\n");
+bool place_wall(char board[BOARD_SIZE][BOARD_SIZE], t_wall *wall, t_game *game) {
+    // Ask for the coordinates and the side
+    printf("Where do you want to place the wall? (e.g. D1 E1 B): ");
+    if (scanf(" %c%d %c%d %c", &wall->col1, &wall->row1, &wall->col2, &wall->row2,
+              &wall->side) != 5) {
+        clear_input_buffer();
+        printf("Error: invalid input.\n");
         return false;
     }
 
-    // Conversion des coordonnees (Ex: D1 -> colonne = 6, ligne = 0)
-    int col1 = (toupper(bar->bar_col_1) - 'A') * 2; // Majuscule pour eviter erreurs
-    int col2 = (toupper(bar->bar_col_2) - 'A') * 2;
-    int lig1 = (bar->bar_lig_1 - 1) * 2;
-    int lig2 = (bar->bar_lig_2 - 1) * 2;
+    // Convert the coordinates (e.g. D1 -> column = 6, row = 0)
+    int col1 = (toupper(wall->col1) - 'A') * 2; // Upper case to avoid mistakes
+    int col2 = (toupper(wall->col2) - 'A') * 2;
+    int row1 = (wall->row1 - 1) * 2;
+    int row2 = (wall->row2 - 1) * 2;
 
-    // Verification des limites du plateau
-    if (col1 < 0 || col1 >= TAILLE || lig1 < 0 || lig1 >= TAILLE ||
-        col2 < 0 || col2 >= TAILLE || lig2 < 0 || lig2 >= TAILLE) {
-        printf("Erreur : Barriere en dehors des limites du plateau.\n");
+    // Check the board limits
+    if (col1 < 0 || col1 >= BOARD_SIZE || row1 < 0 || row1 >= BOARD_SIZE ||
+        col2 < 0 || col2 >= BOARD_SIZE || row2 < 0 || row2 >= BOARD_SIZE) {
+        printf("Error: wall outside the board.\n");
         return false;
     }
 
-    // Verification des cases voisines
-    if (!(abs(col1 - col2) == 2 && lig1 == lig2) && !(abs(lig1 - lig2) == 2 && col1 == col2)) {
-        printf("Erreur : Les cases doivent etre voisines et alignees horizontalement ou verticalement.\n");
+    // Check that the squares are neighbours
+    if (!(abs(col1 - col2) == 2 && row1 == row2) && !(abs(row1 - row2) == 2 && col1 == col2)) {
+        printf("Error: the squares must be neighbours, aligned horizontally or vertically.\n");
         return false;
     }
 
-    // Verification des barrieres restantes pour le joueur
-    if (jeu->joueurs[jeu->joueur_actuel].bar_rest <= 0) {
-        printf("Erreur : Vous n'avez plus de barrieres restantes !\n");
+    // Check the walls left for the player
+    if (game->players[game->current_player].walls_left <= 0) {
+        printf("Error: you have no walls left!\n");
         return false;
     }
 
-    // Verification si l'emplacement est deja occupe par une autre barriere
-    if (plateau[lig1][col1] == 'B' || plateau[lig2][col2] == 'B') {
-        printf("Erreur : Une barriere existe deja sur cette position.\n");
+    // Check whether the spot is already taken by another wall
+    if (board[row1][col1] == WALL || board[row2][col2] == WALL) {
+        printf("Error: there is already a wall at this position.\n");
         return false;
     }
 
-    // Placement de la barriere
-    if (toupper(bar->direction) == 'H') {
-        if (lig1 > 0 && plateau[lig1 - 1][col1] == ' ' && plateau[lig2 - 1][col2] == ' ') {
-            plateau[lig1 - 1][col1] = 'B';
-            plateau[lig2 - 1][col2] = 'B';
+    // Place the wall
+    char side = toupper(wall->side);
+    if (side == 'T') {
+        if (row1 > 0 && board[row1 - 1][col1] == ' ' && board[row2 - 1][col2] == ' ') {
+            board[row1 - 1][col1] = WALL;
+            board[row2 - 1][col2] = WALL;
         } else {
-            printf("Placement impossible en haut.\n");
+            printf("Error: cannot place the wall on top.\n");
             return false;
         }
-    } else if (toupper(bar->direction) == 'B') {
-        if (lig1 < TAILLE - 1 && plateau[lig1 + 1][col1] == ' ' && plateau[lig2 + 1][col2] == ' ') {
-            plateau[lig1 + 1][col1] = 'B';
-            plateau[lig2 + 1][col2] = 'B';
+    } else if (side == 'B') {
+        if (row1 < BOARD_SIZE - 1 && board[row1 + 1][col1] == ' ' && board[row2 + 1][col2] == ' ') {
+            board[row1 + 1][col1] = WALL;
+            board[row2 + 1][col2] = WALL;
         } else {
-            printf("Erreur : Placement en bas impossible.\n");
+            printf("Error: cannot place the wall at the bottom.\n");
             return false;
         }
-    } else if (toupper(bar->direction) == 'G') {
-        if (col1 > 0 && plateau[lig1][col1 - 1] == ' ' && plateau[lig2][col2 - 1] == ' ') {
-            plateau[lig1][col1 - 1] = 'B';
-            plateau[lig2][col2 - 1] = 'B';
+    } else if (side == 'L') {
+        if (col1 > 0 && board[row1][col1 - 1] == ' ' && board[row2][col2 - 1] == ' ') {
+            board[row1][col1 - 1] = WALL;
+            board[row2][col2 - 1] = WALL;
         } else {
-            printf("Erreur : Placement a gauche impossible.\n");
+            printf("Error: cannot place the wall on the left.\n");
             return false;
         }
-    } else if (toupper(bar->direction) == 'D') {
-        if (col1 < TAILLE - 1 && plateau[lig1][col1 + 1] == ' ' && plateau[lig2][col2 + 1] == ' ') {
-            plateau[lig1][col1 + 1] = 'B';
-            plateau[lig2][col2 + 1] = 'B';
+    } else if (side == 'R') {
+        if (col1 < BOARD_SIZE - 1 && board[row1][col1 + 1] == ' ' && board[row2][col2 + 1] == ' ') {
+            board[row1][col1 + 1] = WALL;
+            board[row2][col2 + 1] = WALL;
         } else {
-            printf("Erreur : Placement a droite impossible.\n");
+            printf("Error: cannot place the wall on the right.\n");
             return false;
         }
     } else {
-        printf("Erreur : Direction invalide.\n");
+        printf("Error: invalid side.\n");
         return false;
     }
 
-    // Mise a jour des barrieres restantes pour le joueur
-    jeu->joueurs[jeu->joueur_actuel].bar_rest--;
-    printf("Barriere placee avec succes par %s.\n", jeu->joueurs[jeu->joueur_actuel].nom);
-    jeu->joueur_actuel = (jeu->joueur_actuel + 1) % jeu->nb_joueurs;
+    // Update the walls left for the player
+    game->players[game->current_player].walls_left--;
+    printf("Wall placed by %s.\n", game->players[game->current_player].name);
+    game->current_player = (game->current_player + 1) % game->player_count;
     return true;
 }
 
-void action(t_jeu *jeu) {
-    int victoire = 0;
+void game_loop(t_game *game) {
+    int won = 0;
 
-    while (!victoire) {
-        afficher_plateau(jeu->plateau, jeu->joueurs, jeu);
-        printf("C'est au tour de %s (%c).\n", jeu->joueurs[jeu->joueur_actuel].nom,
-               jeu->joueurs[jeu->joueur_actuel].pion);
+    while (!won) {
+        display_board(game->board, game->players, game);
+        printf("%s's turn (%c).\n", game->players[game->current_player].name,
+               game->players[game->current_player].token);
 
-        printf("Actions possibles :\n");
-        printf("1 - Déplacer le pion\n");
-        printf("2 - Poser une barrière\n");
-        printf("3 - Passer son tour\n");
-        printf("4 - Quitter\n");
-        printf("Votre choix : ");
+        printf("Available actions:\n");
+        printf("1 - Move the pawn\n");
+        printf("2 - Place a wall\n");
+        printf("3 - Skip the turn\n");
+        printf("4 - Quit\n");
+        printf("Your choice: ");
 
-        int choix;
-        if (scanf("%d", &choix) != 1) {
-            nettoyer_tampon();
-            printf("Choix invalide. Veuillez réessayer.\n");
+        int choice;
+        if (scanf("%d", &choice) != 1) {
+            clear_input_buffer();
+            printf("Invalid choice. Please try again.\n");
             continue;
         }
 
-        switch (choix) {
+        switch (choice) {
             case 1:
-                deplacer_pion(jeu);
+                move_pawn(game);
                 break;
 
             case 2: {
-                t_barriere barriere;
-                if (!placement_barriere(jeu->plateau, &barriere, jeu)) {
-                    printf("Action invalide : Impossible de poser une barrière.\n");
+                t_wall wall;
+                if (!place_wall(game->board, &wall, game)) {
+                    printf("Invalid action: the wall cannot be placed.\n");
                 }
                 break;
             }
 
             case 3:
-                printf("%s passe son tour.\n", jeu->joueurs[jeu->joueur_actuel].nom);
-                jeu->joueur_actuel = (jeu->joueur_actuel + 1) % jeu->nb_joueurs;
+                printf("%s skips their turn.\n", game->players[game->current_player].name);
+                game->current_player = (game->current_player + 1) % game->player_count;
                 break;
 
             case 4: {
-                printf("Voulez-vous sauvegarder la partie avant de la quitter ? (O/N) : ");
-                char reponse;
-                scanf(" %c", &reponse);
-                if (toupper(reponse) == 'O') {
-                    sauvegarder_partie_complete(jeu);
-                    printf("Partie sauvegardée. À bientôt !\n");
-                    attendre_touche();
+                printf("Save the game before quitting? (Y/N): ");
+                char answer;
+                scanf(" %c", &answer);
+                if (toupper(answer) == 'Y') {
+                    save_game(game);
+                    printf("Game saved. See you soon!\n");
+                    wait_for_key();
                     return;
                 }
-                if (toupper(reponse) == 'N') {
-                    printf("Partie non sauvegardée. À bientôt !\n");
-                    attendre_touche();
+                if (toupper(answer) == 'N') {
+                    printf("Game not saved. See you soon!\n");
+                    wait_for_key();
                     return;
                 }
-                printf("Choix invalide. Veuillez réessayer.\n");
+                printf("Invalid choice. Please try again.\n");
                 break;
             }
 
             default:
-                printf("Choix invalide. Veuillez réessayer.\n");
+                printf("Invalid choice. Please try again.\n");
                 break;
         }
 
-        // Vérifier la victoire après chaque action
-        if (verifier_victoire(jeu)) {
-            victoire = 1;
-            jeu->joueurs[jeu->joueur_actuel].score += POINTS_VICTOIRE;
+        // Check for a win after each action
+        if (check_victory(game)) {
+            won = 1;
+            game->players[game->current_player].score += WIN_POINTS;
             system("cls");
-            printf("Bravo %s ! Vous avez atteint le cote oppose !\n", jeu->joueurs[jeu->joueur_actuel].nom);
+            printf("Well done %s! You reached the opposite side!\n", game->players[game->current_player].name);
 
-            sauvegarder_scores(jeu, FICHIER_SCORES);
-            sauvegarder_historique(jeu, FICHIER_HISTORIQUE);
+            save_scores(game, SCORES_FILE);
+            save_history(game, HISTORY_FILE);
 
-            afficher_resume_joueurs(jeu);
-            attendre_touche();
+            display_player_summary(game);
+            wait_for_key();
         }
     }
 }
 
-void lancer_nouvelle_partie(t_jeu *jeu) {
-    memset(jeu, 0, sizeof(t_jeu));
-    initialiser_plateau(jeu->plateau);
-    initialiser_joueurs(jeu->joueurs, jeu);
-    initialiser_positions_joueurs(jeu->joueurs, jeu->nb_joueurs);
-    charger_scores(jeu, FICHIER_SCORES);
-    jeu->joueur_actuel = gen_aleatoire(jeu->nb_joueurs); // Tirage au sort du premier joueur
+void start_new_game(t_game *game) {
+    memset(game, 0, sizeof(t_game));
+    init_board(game->board);
+    init_players(game->players, game);
+    init_player_positions(game->players, game->player_count);
+    load_scores(game, SCORES_FILE);
+    game->current_player = random_int(game->player_count); // The first player is drawn at random
     system("cls");
-    action(jeu);
+    game_loop(game);
 }
 
-void continuer_partie(t_jeu *jeu) {
+void resume_game(t_game *game) {
     system("cls");
-    printf("Reprise de la partie.\n");
-    action(jeu);
+    printf("Resuming the game.\n");
+    game_loop(game);
 }

@@ -2,69 +2,69 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <conio.h> // Pour _getch()
-#include "jeu.h"
+#include <conio.h> // For _getch()
+#include "game.h"
 #include "interaction.h"
-#include "affichage.h"
-#include "utile.h"
+#include "display.h"
+#include "utils.h"
 
 #define UP_ARROW 72
 #define DOWN_ARROW 80
 #define ENTER 13
 
 int main() {
-    int choixActuel = 0;
-    int nbOptions = 5;
+    int selected_option = 0;
+    int option_count = 5;
     int running = 1;
 
     srand((unsigned int) time(NULL));
 
-    t_jeu *jeu = (t_jeu *) malloc(sizeof(t_jeu));
-    if (!jeu) {
-        printf("Erreur d'allocation mémoire pour le jeu.\n");
+    t_game *game = (t_game *) malloc(sizeof(t_game));
+    if (!game) {
+        printf("Memory allocation error for the game.\n");
         return 1;
     }
-    memset(jeu, 0, sizeof(t_jeu)); // Initialisation de la structure
+    memset(game, 0, sizeof(t_game)); // Initialise the structure
 
     while (running) {
-        afficherMenu(choixActuel);
-        char touche = _getch();
+        display_menu(selected_option);
+        char key = _getch();
 
-        switch (touche) {
-            case UP_ARROW: // Flèche haut
-                choixActuel = (choixActuel - 1 + nbOptions) % nbOptions;
+        switch (key) {
+            case UP_ARROW:
+                selected_option = (selected_option - 1 + option_count) % option_count;
                 break;
 
-            case DOWN_ARROW: // Flèche bas
-                choixActuel = (choixActuel + 1) % nbOptions;
+            case DOWN_ARROW:
+                selected_option = (selected_option + 1) % option_count;
                 break;
 
-            case ENTER: // Touche Entrée
+            case ENTER:
                 system("cls");
-                switch (choixActuel) {
-                    case 0: // Nouvelle partie
-                        lancer_nouvelle_partie(jeu);
+                switch (selected_option) {
+                    case 0: // New game
+                        start_new_game(game);
                         break;
 
-                    case 1: // Reprendre une partie sauvegardée
-                        if (reprise_partie_complete(jeu)) {
-                            continuer_partie(jeu);
+                    case 1: // Resume a saved game
+                        if (load_game(game)) {
+                            resume_game(game);
                         } else {
-                            printf("Impossible de reprendre : aucune partie sauvegardee.\n");
-                            attendre_touche();
+                            printf("Cannot resume: no saved game.\n");
+                            wait_for_key();
                         }
                         break;
 
-                    case 2: // Afficher l'aide
-                        afficher_aide();
+                    case 2: // Help
+                        display_help();
                         break;
 
-                    case 3: // Afficher les scores
-                        afficher_scores(FICHIER_SCORES);
+                    case 3: // Scores
+                        display_scores(SCORES_FILE);
                         break;
 
-                    case 4: // Quitter le jeu
-                        printf("Quitter le jeu. Merci d'avoir joue !\n");
+                    case 4: // Quit
+                        printf("Quitting. Thanks for playing!\n");
                         running = 0;
                         break;
                 }
@@ -72,6 +72,6 @@ int main() {
         }
     }
 
-    free(jeu);
+    free(game);
     return 0;
 }

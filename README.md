@@ -2,18 +2,18 @@
 
 The Quoridor board game in the Windows console, for 2 or 4 players: pawn moves, wall placement, saving and resuming a game, cumulative scores and game history.
 
-Third-year programming project (ECE Paris, 2024), built as a team. The in-game text and the identifiers are in French.
+Third-year programming project (ECE Paris, 2024), built as a team.
 
 ![C11](https://img.shields.io/badge/C-11-00599c)
 ![CMake](https://img.shields.io/badge/build-CMake-064f8c)
 ![Windows](https://img.shields.io/badge/platform-Windows%20console-0078d6)
 
 ```
-   Joueur actif : Alice  | Jeton : A  | Murs restants : 10
+   Current player: Alice  | Token: A  | Walls left: 10
 
     A     B     C     D     E     F     G     H     I
  1  .     .     .     .     .     .     .     .     .
-                      B     B
+                      #     #
  2  .     .     .     .     A     .     .     .     .
 
  3  .     .     .     .     .     .     .     .     .
@@ -23,11 +23,11 @@ Third-year programming project (ECE Paris, 2024), built as a team. The in-game t
 
 - Menu navigated with the arrow keys (new game, resume, help, scores, quit)
 - 2-player games (10 walls each) or 4-player games (5 walls each), first player drawn at random
-- Keyboard moves (`Z` `Q` `S` `D`), refused when a wall blocks the way
+- Keyboard moves, refused when a wall blocks the way
 - Wall placement between two neighbouring squares, with bounds, alignment and overlap checks
 - A player wins as soon as their pawn reaches the side opposite its start: 5 points, accumulated from one game to the next
 - Full save (board, players, positions, current turn) and resume from the menu
-- History of finished games in `historique.txt`
+- History of finished games in `history.txt`
 
 ## Build and run
 
@@ -48,8 +48,8 @@ On each turn, the player picks an action:
 
 | Choice | Action |
 |---|---|
-| `1` | Move the pawn one square with `Z` (up), `S` (down), `Q` (left), `D` (right) |
-| `2` | Place a wall: two neighbouring squares then a side, for example `D1 E1 B` to block the bottom of squares D1 and E1 (`H` top, `B` bottom, `G` left, `D` right) |
+| `1` | Move the pawn one square: `W` or `Z` (up), `S` (down), `A` or `Q` (left), `D` (right) — both QWERTY and AZERTY layouts work |
+| `2` | Place a wall: two neighbouring squares then a side, for example `D1 E1 B` to block the bottom of squares D1 and E1 (`T` top, `B` bottom, `L` left, `R` right) |
 | `3` | Skip the turn |
 | `4` | Quit, with or without saving |
 
@@ -57,20 +57,22 @@ On each turn, the player picks an action:
 
 ```
 ├── include/
-│   ├── jeu.h            Data structures (board, player, wall) and rules
-│   ├── affichage.h      Console rendering
+│   ├── game.h           Data structures (board, player, wall) and rules
+│   ├── display.h        Console rendering
 │   ├── interaction.h    Player actions and game loop
-│   └── utile.h          Colours, input, random numbers
+│   └── utils.h          Colours, input, random numbers
 ├── src/
 │   ├── main.c           Main menu
-│   ├── jeu.c            Initialisation, win detection, save/load, scores, history
-│   ├── affichage.c      Coloured board, menu, help, score table
+│   ├── game.c           Initialisation, win detection, save/load, scores, history
+│   ├── display.c        Coloured board, menu, help, score table
 │   ├── interaction.c    Pawn move, wall placement, game flow
-│   └── utile.c          Utility functions
+│   └── utils.c          Utility functions
 └── CMakeLists.txt
 ```
 
 The 9 × 9 board is stored in a 17 × 17 grid: playable squares sit on even indices, and walls go on the odd indices between two squares. Checking whether a move is blocked comes down to reading a single cell.
+
+A game in progress is saved to `saved_board.txt` and `saved_players.txt`; cumulative scores go to `scores.txt`.
 
 ## History
 

@@ -11,7 +11,7 @@ cmake-build-*/
 .vscode/
 
 # Files created by the game
-partie.txt
-joueurs.txt
+saved_board.txt
+saved_players.txt
 scores.txt
-historique.txt
+history.txt
